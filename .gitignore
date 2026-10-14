@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# Block Windows Alternate Data Streams / Zone Identifier files
+*:Zone.Identifier

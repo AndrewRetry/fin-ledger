@@ -2,12 +2,9 @@ package com.andrewretry.ledger.journal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -19,12 +16,12 @@ import java.util.function.IntConsumer;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.andrewretry.ledger.account.AccountService;
 import com.andrewretry.ledger.common.error.ErrorCode;
 import com.andrewretry.ledger.common.error.LedgerException;
+import com.andrewretry.ledger.integrity.IntegrityService;
+import com.andrewretry.ledger.integrity.dto.IntegrityReport;
 import com.andrewretry.ledger.support.IntegrationTest;
 
 /**
@@ -41,7 +38,7 @@ class ConcurrencyIT {
 	AccountService accounts;
 
 	@Autowired
-	JdbcTemplate jdbc;
+	IntegrityService integrity;
 
 	@Test
 	void hotAccountNeverLosesAnUpdate() throws Exception {
@@ -129,21 +126,11 @@ class ConcurrencyIT {
 		}
 	}
 
-	/**
-	 * The provided integrity queries (PLAN.md §7.8) must find nothing wrong. IntegrityService runs them from P5;
-	 * until then the test runs them itself.
-	 */
-	private void assertBooksBalance() throws IOException {
-		for (String check : List.of("trial_balance", "transaction_balance", "account_balances")) {
-			assertThat(jdbc.queryForList(sql(check))).as(check).isEmpty();
-		}
-		for (Map<String, Object> row : jdbc.queryForList(sql("money_supply"))) {
-			assertThat(row.get("actual")).as("money supply of " + row.get("currency")).isEqualTo(row.get("expected"));
-		}
-	}
-
-	private static String sql(String check) throws IOException {
-		return new ClassPathResource("sql/checks/" + check + ".sql").getContentAsString(StandardCharsets.UTF_8);
+	/** The full integrity run (balances, money supply, hash chain) must find nothing wrong. */
+	private void assertBooksBalance() {
+		IntegrityReport report = integrity.run();
+		assertThat(report.discrepancies()).isEmpty();
+		assertThat(report.status()).isEqualTo("CLEAN");
 	}
 
 	private UUID customer(String name) {

@@ -39,6 +39,19 @@ public class LedgerState {
 		headHash = newHash;
 	}
 
+	/** Stops all writes until an administrator releases it. */
+	public void hold(String reason, Instant now) {
+		integrityHold = true;
+		holdReason = reason;
+		holdSince = now;
+	}
+
+	public void release() {
+		integrityHold = false;
+		holdReason = null;
+		holdSince = null;
+	}
+
 	public long getChainLength() {
 		return chainLength;
 	}

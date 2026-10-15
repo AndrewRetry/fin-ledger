@@ -94,6 +94,11 @@ public class LedgerException extends RuntimeException {
 				+ " convert to less than one minor unit of " + to + ". Send a larger amount.");
 	}
 
+	public static LedgerException runNotFound(UUID runId) {
+		return new LedgerException(ErrorCode.RUN_NOT_FOUND, "No reconciliation run with id " + runId + ".",
+				Map.of("runId", runId));
+	}
+
 	public static LedgerException integrityHold() {
 		return new LedgerException(ErrorCode.LEDGER_INTEGRITY_HOLD,
 				"Writes are paused until an administrator reviews a failed integrity check. Reads still work.");

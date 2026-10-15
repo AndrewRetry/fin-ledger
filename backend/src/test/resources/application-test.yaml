@@ -1,0 +1,7 @@
+ledger:
+  admin-key: test-admin
+  jobs:
+    enabled: false        # tests call integrity / month-end directly
+  seed:
+    fx-liquidity-major-units: 1000000
+    demo-data: false

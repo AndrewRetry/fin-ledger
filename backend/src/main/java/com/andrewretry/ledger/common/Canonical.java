@@ -3,8 +3,11 @@ package com.andrewretry.ledger.common;
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HexFormat;
 
 /**
  * Canonical byte encoding used for hashes: each field is a 4-byte big-endian length followed by its UTF-8 bytes,
@@ -27,6 +30,16 @@ public final class Canonical {
 
 	public byte[] bytes() {
 		return out.toByteArray();
+	}
+
+	/** Lowercase hex SHA-256 of the bytes so far. */
+	public String sha256Hex() {
+		try {
+			return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes()));
+		}
+		catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException("SHA-256 is always available", e);
+		}
 	}
 
 	/** Epoch microseconds, the timestamp form that is hashed. */

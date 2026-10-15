@@ -3,6 +3,10 @@ package com.andrewretry.ledger.account;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.andrewretry.ledger.common.error.LedgerException;
+import com.andrewretry.ledger.journal.AppliedPosting;
+import com.andrewretry.ledger.journal.Direction;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -53,6 +57,21 @@ public class Account {
 		this.balance = 0;
 		this.version = 0;
 		this.createdAt = createdAt;
+	}
+
+	/** Applies one posting to this already-locked account and returns what the posting must record. */
+	public AppliedPosting apply(Direction direction, long amount) {
+		long newBalance = direction == Direction.CREDIT
+				? Math.addExact(balance, amount)
+				: Math.subtractExact(balance, amount);
+		if (kind != AccountKind.FUNDING && newBalance < 0) {
+			throw kind == AccountKind.FX_LIQUIDITY
+					? LedgerException.insufficientLiquidity(id)
+					: LedgerException.insufficientFunds(id);
+		}
+		balance = newBalance;
+		version = version + 1;
+		return new AppliedPosting(id, currency, direction, amount, version, newBalance);
 	}
 
 	public UUID getId() {

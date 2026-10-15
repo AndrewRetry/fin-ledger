@@ -37,4 +37,15 @@ public class LedgerException extends RuntimeException {
 				"Currency '" + currency + "' is not supported. Use an ISO 4217 code such as SGD, USD, EUR or JPY.");
 	}
 
+	public static LedgerException insufficientFunds(UUID accountId) {
+		return new LedgerException(ErrorCode.INSUFFICIENT_FUNDS,
+				"Account " + accountId + " does not hold enough money for this amount.", Map.of("accountId", accountId));
+	}
+
+	public static LedgerException insufficientLiquidity(UUID accountId) {
+		return new LedgerException(ErrorCode.INSUFFICIENT_LIQUIDITY,
+				"House FX liquidity account " + accountId + " cannot cover this amount; try a smaller amount later.",
+				Map.of("accountId", accountId));
+	}
+
 }

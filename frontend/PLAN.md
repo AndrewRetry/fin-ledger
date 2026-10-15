@@ -258,8 +258,8 @@ Total ≈ 7.5 h. If time runs short, cut F6 screenshots and the hash-verify pane
 
 ## 10. Open questions for the owner (answer before F0)
 
-1. Mantine as the UI kit (recommended) — or another kit you prefer?
-2. Console served by Docker on port 3000 next to the API on 8080 (recommended) — or only via `npm run dev`?
-3. Playwright e2e in F6 (recommended) — or unit tests only, to save time?
+1. Mantine as the UI kit (recommended) — or another kit you prefer? use mantine
+2. Console served by Docker on port 3000 next to the API on 8080 (recommended) — or only via `npm run dev`? use docker
+3. Playwright e2e in F6 (recommended) — or unit tests only, to save time? unit tests for now
 4. Should CI (`.github/workflows/ci.yaml`) also build and unit-test the frontend? (Recommended: yes, a second job,
-   no e2e in CI.)
+   no e2e in CI.) yes, a second job

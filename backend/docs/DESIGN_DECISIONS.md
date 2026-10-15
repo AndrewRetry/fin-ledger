@@ -11,7 +11,9 @@ Base Requirements:
 - answers balance and history queries, 
 - behaves correctly under retries, concurrency, reversals, multiple currencies and month-end reconciliation.
 
-I built it as the kind of internal ledger a digital-asset custodian keeps beside its custody platform. The platform (for example Fireblocks) holds the keys and moves assets on-chain; the ledger is the book of record for **who owns how much**. That framing shaped three choices: every outside movement can carry the platform's id and is booked at most once (ADR-07), the ledger can prove its totals at any moment (ADR-11), and history is tamper-evident (ADR-10). How the two systems connect is designed in ADR-15; the integration itself is out of scope.
+I built it as the kind of internal ledger a digital-asset custodian keeps beside its custody platform. The platform (for example Fireblocks) holds the keys and moves assets on-chain; the ledger is the book of record for **who owns how much**. 
+
+That framing shaped three choices: every outside movement can carry the platform's id and is booked at most once (ADR-07), the ledger can prove its totals at any moment (ADR-11), and history is tamper-evident (ADR-10). How the two systems connect is designed in ADR-15.
 
 ---
 

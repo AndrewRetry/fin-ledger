@@ -4,6 +4,7 @@
 ![Java 25](https://img.shields.io/badge/Java-25-blue)
 ![Spring Boot 4.1](https://img.shields.io/badge/Spring%20Boot-4.1-6db33f)
 ![PostgreSQL 18](https://img.shields.io/badge/PostgreSQL-18-336791)
+![React 19](https://img.shields.io/badge/React-19-61dafb)
 
 A double-entry ledger service that keeps money exact. It records transfers atomically, answers balance and
 history queries, and stays correct when requests are retried, run at the same time, reversed, or cross currencies.
@@ -11,7 +12,8 @@ Every transaction is hash-chained to the one before it, so history can't be edit
 stop all writes the moment the numbers stop adding up.
 
 It is built as the internal book of record a digital-asset custodian keeps beside its custody platform: the
-platform knows *where* the coins are, this ledger knows *whose* they are.
+platform knows *where* the coins are, this ledger knows *whose* they are. A browser console lets you try every
+feature, and run every requirement of the brief, without writing a single request by hand.
 
 ---
 
@@ -19,6 +21,7 @@ platform knows *where* the coins are, this ledger knows *whose* they are.
 
 - [Quick start](#quick-start)
 - [Try it](#try-it)
+- [Console](#console)
 - [What it does](#what-it-does)
 - [How a transfer works](#how-a-transfer-works)
 - [API at a glance](#api-at-a-glance)
@@ -34,13 +37,16 @@ platform knows *where* the coins are, this ledger knows *whose* they are.
 
 ## Quick start
 
-You need **Docker**. To run the tests locally you also need **Java 25**; to run the demo script, `curl` and `jq`.
+You need **Docker**. To run the backend tests locally you also need **Java 25**, for the console's tests
+**Node 22**, and for the demo script `curl` and `jq`.
 
 ```bash
-docker compose up --build          # API on http://localhost:8080 — opening / takes you to Swagger UI
+docker compose up --build          # console on http://localhost:3000, API on http://localhost:8080 (Swagger UI at /)
 ./backend/scripts/demo.sh          # walks through every requirement and prints PASS/FAIL per step
-cd backend && ./mvnw verify        # the full test suite (Testcontainers starts PostgreSQL in Docker)
+cd backend && ./mvnw verify        # the backend test suite (Testcontainers starts PostgreSQL in Docker)
 ```
+
+Then open **http://localhost:3000** and press **Run all** on the Scenarios page.
 
 On startup the ledger creates four demo accounts with fixed ids, so you can try it straight away:
 
@@ -92,6 +98,41 @@ When something is refused, the answer says why and what to do, as an
 { "status": 422, "code": "INSUFFICIENT_FUNDS", "title": "Insufficient funds",
   "detail": "Account 9f75da44-… does not hold enough money for this amount.", "requestId": "…" }
 ```
+
+## Console
+
+A small web console for the ledger, served by `docker compose up` on **http://localhost:3000**. It holds no
+business rules of its own: it sends real requests through the same API and shows exactly what came back —
+status codes, problem `code`s, request ids, the `Idempotent-Replayed` header and the integrity hold.
+
+![Scenarios page: every requirement of the brief, run against the live API](frontend/docs/screenshots/scenarios.png)
+
+| Page | What you can do there |
+|---|---|
+| **Overview** | See the chain head, the demo accounts' balances, and run the integrity checks |
+| **Accounts** | Browse every account (customers, house FX wallets, FUNDING), open one, create one, read its history |
+| **Move money** | Transfer (with a live FX preview across currencies), deposit, withdraw; send a request again with the same key to watch the replay |
+| **Transactions** | Open any transaction, check its hash in your browser, reverse it |
+| **FX rates** | See the rate in use for every pair; add one with the admin key |
+| **Integrity** | Run the checks, reconcile a month, read back a stored run |
+| **Scenarios** | Run each requirement of the brief — or all twelve — with PASS/FAIL per step and every request and response |
+| **Admin** | Set the admin key (`dev-admin` locally), see why a hold is on, release it |
+
+![Move money: SGD 100.00 to a USD account, through the house FX wallets](frontend/docs/screenshots/move-money-fx.png)
+
+Built with React 19, TypeScript, Vite and [Mantine](https://mantine.dev); API types are generated from the
+backend's OpenAPI document, so the console can't drift from the API. To work on it:
+
+```bash
+cd frontend
+npm ci
+npm run dev          # http://localhost:3000, with the backend from docker compose on :8080
+npm test             # unit tests: money maths, FX preview and hash vectors shared with the backend
+npm run test:e2e     # Playwright, against whatever runs on :3000 (e.g. docker compose up --build)
+npm run gen:api      # regenerate src/api/schema.ts after an API change
+```
+
+The build plan the console was made from is [`frontend/PLAN.md`](frontend/PLAN.md).
 
 ## What it does
 
@@ -239,7 +280,7 @@ Deliberately out of scope for this version:
 ## Project layout
 
 ```
-docker-compose.yml          PostgreSQL 18 + the app, with demo data
+docker-compose.yml          PostgreSQL 18, the API and the console, with demo data
 backend/
 ├── src/main/java/com/andrewretry/ledger/
 │   ├── account/            accounts, balances, history
@@ -254,12 +295,22 @@ backend/
 ├── src/test/java/          unit and integration tests (JUnit 5, Testcontainers)
 ├── scripts/                demo.sh, tamper-demo.sh
 └── docs/                   DESIGN_DECISIONS.md, api-examples.http
+frontend/
+├── src/
+│   ├── api/                typed client (generated from OpenAPI), queries, problem handling
+│   ├── components/         layout, transaction card, money input, report views
+│   ├── pages/              one per navbar entry
+│   ├── scenarios/          the runnable requirement checks
+│   └── lib/                money maths, FX preview, hash verification
+├── tests/                  unit (Vitest) and end-to-end (Playwright)
+└── Dockerfile, nginx.conf  static build served by nginx, /api proxied to the backend
 ```
 
 ## AI usage
 
 Planned with AI help and built with Claude Code:
-[`PLAN.md`](backend/PLAN.md) and [`AGENTS.md`](backend/AGENTS.md) (both in the repo).
+[`PLAN.md`](backend/PLAN.md) and [`AGENTS.md`](backend/AGENTS.md) for the service, and
+[`frontend/PLAN.md`](frontend/PLAN.md) for the console (all in the repo).
 
 All design decisions are documented in the following document:
 [`DESIGN_DECISIONS.md`](backend/docs/DESIGN_DECISIONS.md).

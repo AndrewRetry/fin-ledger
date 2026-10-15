@@ -267,7 +267,7 @@ function FormLayout({ submission, children }: { submission: Submission; children
   const { mutation, problem } = submission
   const posted = mutation.data
   return (
-    <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
+    <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="md">
       <Paper withBorder p="md">{children}</Paper>
       <Stack>
         {!posted && !mutation.error && (

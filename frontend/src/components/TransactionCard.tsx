@@ -67,7 +67,7 @@ export function TransactionCard({ tx, replayed, reversedById, actions, footer }:
           )}
         </SimpleGrid>
 
-        <Table.ScrollContainer minWidth={640}>
+        <Table.ScrollContainer minWidth={560}>
           <Table verticalSpacing={6} withTableBorder>
             <Table.Thead>
               <Table.Tr>

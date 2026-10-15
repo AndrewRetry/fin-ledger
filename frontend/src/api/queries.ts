@@ -108,3 +108,32 @@ export function useAdminActions() {
     }),
   }
 }
+
+export type IntegrityReport = components['schemas']['IntegrityReport']
+
+/** Integrity checks and month-end closes. Either may turn the hold on, so everything is refetched afterwards. */
+export function useIntegrityActions() {
+  const queryClient = useQueryClient()
+  const refreshAll = () => queryClient.invalidateQueries()
+  return {
+    runChecks: useMutation({
+      mutationFn: () => unwrap(api.POST('/integrity/checks')),
+      onSettled: refreshAll,
+    }),
+    closeMonth: useMutation({
+      mutationFn: (period: string) =>
+        unwrap(api.POST('/reconciliations/month-end', { params: { query: { period } } })),
+      onSettled: refreshAll,
+    }),
+  }
+}
+
+/** A stored integrity or month-end run, read back by id. */
+export function useStoredRun(id: string | null) {
+  return useQuery({
+    queryKey: ['run', id],
+    queryFn: () => unwrap(api.GET('/integrity/runs/{id}', { params: { path: { id: id! } } })),
+    enabled: Boolean(id),
+    retry: false,
+  })
+}

@@ -5,6 +5,7 @@ import { AdminPage } from './pages/AdminPage'
 import { FxRatesPage } from './pages/FxRatesPage'
 import { AccountDetailPage } from './pages/AccountDetailPage'
 import { AccountsPage } from './pages/AccountsPage'
+import { IntegrityPage } from './pages/IntegrityPage'
 import { MoveMoneyPage } from './pages/MoveMoneyPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { OverviewPage } from './pages/OverviewPage'
@@ -23,8 +24,7 @@ export default function App() {
         <Route path="transactions" element={<TransactionsPage />} />
         <Route path="transactions/:id" element={<TransactionDetailPage />} />
         <Route path="fx" element={<FxRatesPage />} />
-        <Route path="integrity" element={
-          <PlaceholderPage title="Integrity" phase="F4">Integrity checks, stored runs and month-end reconciliation.</PlaceholderPage>} />
+        <Route path="integrity" element={<IntegrityPage />} />
         <Route path="scenarios" element={
           <PlaceholderPage title="Scenarios" phase="F5">Every requirement of the assignment, runnable with one click.</PlaceholderPage>} />
         <Route path="admin" element={<AdminPage />} />

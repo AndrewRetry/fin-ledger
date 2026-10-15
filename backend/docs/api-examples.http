@@ -1,0 +1,75 @@
+### Ready-made requests for IntelliJ's HTTP client or VS Code "REST Client".
+### Start the stack first: docker compose up --build   (demo accounts are created with these fixed ids)
+### Amounts are integer minor units: 2500 = SGD 25.00, 50000 = JPY 50,000.
+
+@base = http://localhost:8080
+@alice = 8398f93a-24c5-3661-8e9a-33d54273d824
+@bob = 9f75da44-22c8-31e4-9a7d-2bd07518cc4a
+@carol = f5da7969-bb24-307c-ad5f-82b42413fc67
+@kenji = 413efdce-9786-318b-be29-69819a82091a
+
+### Alice's balance
+GET {{base}}/accounts/{{alice}}
+
+### Transfer SGD 25.00 from Alice to Bob (change the key to send a new transfer;
+### send it twice with the same key and you get the same transaction back)
+POST {{base}}/transactions
+Content-Type: application/json
+Idempotency-Key: example-transfer-1
+
+{ "sourceAccountId": "{{alice}}", "destinationAccountId": "{{bob}}", "amount": 2500, "description": "Lunch split" }
+
+### Alice's history (oldest first)
+GET {{base}}/accounts/{{alice}}/transactions?page=0&size=50
+
+### Cross-currency: SGD 100.00 from Alice to Carol (USD)
+POST {{base}}/transactions
+Content-Type: application/json
+Idempotency-Key: example-fx-1
+
+{ "sourceAccountId": "{{alice}}", "destinationAccountId": "{{carol}}", "amount": 10000 }
+
+### Insufficient funds -> 422
+POST {{base}}/transactions
+Content-Type: application/json
+Idempotency-Key: example-too-much-1
+
+{ "sourceAccountId": "{{bob}}", "destinationAccountId": "{{alice}}", "amount": 999999999 }
+
+### Reverse a transaction (paste an id from a response above)
+POST {{base}}/transactions/PASTE-TRANSACTION-ID/reversals
+Content-Type: application/json
+Idempotency-Key: example-reversal-1
+
+{ "reason": "Customer dispute" }
+
+### Deposit JPY 10,000 into Kenji
+POST {{base}}/deposits
+Content-Type: application/json
+Idempotency-Key: example-deposit-1
+
+{ "accountId": "{{kenji}}", "amount": 10000 }
+
+### A deposit from outside, with the outside system's id (e.g. a Fireblocks transaction id).
+### Send it again with a NEW Idempotency-Key and the same externalRef -> 409 EXTERNAL_REF_ALREADY_USED
+POST {{base}}/deposits
+Content-Type: application/json
+Idempotency-Key: example-onchain-deposit-1
+
+{ "accountId": "{{carol}}", "amount": 25000, "description": "Incoming transfer", "externalRef": "fb-tx-example-0001" }
+
+### Current FX rates
+GET {{base}}/fx/rates
+
+### Integrity check: totals, chain, every account
+POST {{base}}/integrity/checks
+
+### Month-end reconciliation (this month = provisional)
+POST {{base}}/reconciliations/month-end?period=2026-10
+
+### Hash-chain head (record it somewhere outside the system)
+GET {{base}}/ledger/head
+
+### Integrity hold status (admin)
+GET {{base}}/admin/integrity-hold
+X-Admin-Key: dev-admin

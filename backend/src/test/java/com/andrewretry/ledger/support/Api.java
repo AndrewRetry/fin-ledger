@@ -19,6 +19,9 @@ import tools.jackson.databind.json.JsonMapper;
 public final class Api {
 
 	public static final String IDEMPOTENCY_KEY = "Idempotency-Key";
+	public static final String ADMIN_KEY = "X-Admin-Key";
+	/** The admin key of application-test.yaml. */
+	public static final String TEST_ADMIN_KEY = "test-admin";
 
 	private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -62,6 +65,11 @@ public final class Api {
 					}
 				})
 				.exchange(Api::read);
+	}
+
+	/** A POST to /admin/** with the test admin key. */
+	public Response admin(String path, String jsonBody) {
+		return post(path, jsonBody, ADMIN_KEY, TEST_ADMIN_KEY);
 	}
 
 	public Response postWithoutKey(String path, String jsonBody) {

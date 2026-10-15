@@ -70,6 +70,24 @@ public class ReconciliationRepository {
 				rs.getString("detail")), runId);
 	}
 
+	public boolean snapshotsExist(LocalDate period) {
+		return Boolean.TRUE.equals(jdbc.queryForObject(
+				"select exists (select 1 from account_period_balances where period = ?)", Boolean.class, period));
+	}
+
+	/** The database accepts these only from a clean, final month-end run of the same period. */
+	public int saveSnapshots(UUID runId, List<AccountPeriodBalance> snapshots) {
+		for (AccountPeriodBalance s : snapshots) {
+			jdbc.update("""
+					insert into account_period_balances (account_id, period, currency, opening_balance, period_debits,
+					                                     period_credits, closing_balance, last_account_version, run_id)
+					values (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+					s.accountId(), s.period(), s.currency(), s.opening(), s.debits(), s.credits(), s.closing(),
+					s.lastAccountVersion(), runId);
+		}
+		return snapshots.size();
+	}
+
 	/** Month-end snapshots this run froze (0 for every integrity run). */
 	public int countSnapshots(UUID runId) {
 		return jdbc.queryForObject("select count(*) from account_period_balances where run_id = ?", Integer.class, runId);

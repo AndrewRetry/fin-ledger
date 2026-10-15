@@ -1,9 +1,10 @@
 package com.andrewretry.ledger.account.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record CreateAccountRequest(
-		@NotBlank @Size(max = 100) String name,
-		@NotBlank String currency) {
+		@Schema(example = "Dana") @NotBlank @Size(max = 100) String name,
+		@Schema(example = "SGD") @NotBlank String currency) {
 }

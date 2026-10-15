@@ -53,6 +53,23 @@ class LedgerApplicationIT {
 				.as(currency).containsExactly(amount));
 	}
 
+	/** Demo data is off in tests; called directly here, twice, as two restarts would. */
+	@Test
+	void createsTheDemoAccountsWithFixedIdsAndFundsThemOnce() {
+		assertThat(StartupSeeder.demoAccountId("Alice")).hasToString("8398f93a-24c5-3661-8e9a-33d54273d824");
+		assertThat(StartupSeeder.demoAccountId("Bob")).hasToString("9f75da44-22c8-31e4-9a7d-2bd07518cc4a");
+		assertThat(StartupSeeder.demoAccountId("Carol")).hasToString("f5da7969-bb24-307c-ad5f-82b42413fc67");
+		assertThat(StartupSeeder.demoAccountId("Kenji")).hasToString("413efdce-9786-318b-be29-69819a82091a");
+
+		seeder.createDemoAccounts();
+		seeder.createDemoAccounts();
+
+		assertThat(jdbc.queryForObject("select balance from accounts where id = ?", Long.class,
+				StartupSeeder.demoAccountId("Alice"))).isEqualTo(100_000);
+		assertThat(jdbc.queryForObject("select balance from accounts where id = ?", Long.class,
+				StartupSeeder.demoAccountId("Kenji"))).isEqualTo(50_000);
+	}
+
 	/** A restart runs the seeder again; its fixed keys replay, so nothing new is written. */
 	@Test
 	void seedingAgainChangesNothing() {

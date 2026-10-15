@@ -50,7 +50,12 @@ public class Account {
 
 	/** A new, empty customer wallet. The database refuses accounts that do not start at balance 0, version 0. */
 	public Account(String name, String currency, Instant createdAt) {
-		this.id = UUID.randomUUID();
+		this(UUID.randomUUID(), name, currency, createdAt);
+	}
+
+	/** The same, with a chosen id (the demo accounts have fixed ids so a reviewer can try them at once). */
+	public Account(UUID id, String name, String currency, Instant createdAt) {
+		this.id = id;
 		this.name = name;
 		this.kind = AccountKind.CUSTOMER;
 		this.currency = currency;

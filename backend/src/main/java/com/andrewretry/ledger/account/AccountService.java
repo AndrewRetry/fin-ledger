@@ -35,6 +35,14 @@ public class AccountService {
 		return AccountResponse.of(account, currencies);
 	}
 
+	/** Creates a customer account with a fixed id unless it already exists (startup demo data). */
+	@Transactional
+	public void createIfMissing(UUID id, String name, String currency) {
+		if (!accounts.existsById(id)) {
+			accounts.save(new Account(id, name, currency, dbClock.now()));
+		}
+	}
+
 	@Transactional(readOnly = true)
 	public AccountResponse get(UUID id) {
 		Account account = accounts.findById(id).orElseThrow(() -> LedgerException.accountNotFound(id));

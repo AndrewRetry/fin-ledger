@@ -1,3 +1,67 @@
 spring:
   application:
     name: ledger
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ledger}
+    username: ${SPRING_DATASOURCE_USERNAME:ledger}
+    password: ${SPRING_DATASOURCE_PASSWORD:ledger}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 0
+      idle-timeout: 60000
+      max-lifetime: 300000
+      connection-timeout: 20000
+      # Guardrails on every connection: never wait long for a lock, never run away.
+      connection-init-sql: "SET lock_timeout = '3s'; SET statement_timeout = '30s'; SET idle_in_transaction_session_timeout = '60s'"
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate           # Flyway owns the schema
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+      accept-float-as-int: false   # 10.5 must not silently become 10
+  mvc:
+    problemdetails:
+      enabled: true
+  web:
+    error:
+      include-stacktrace: never
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+ledger:
+  admin-key: ${LEDGER_ADMIN_KEY:}              # blank = /admin/** always answers 401
+  close:
+    zone: Asia/Singapore
+    cron: "0 5 0 1 * *"                        # 00:05 on the 1st (Singapore time): close the previous month
+  integrity:
+    interval: PT10M
+  jobs:
+    enabled: true
+  seed:
+    fx-liquidity-major-units: 1000000          # per currency, deposited once (idempotent key)
+    demo-data: ${LEDGER_DEMO_DATA:false}       # Alice, Bob, Carol, Kenji with fixed ids

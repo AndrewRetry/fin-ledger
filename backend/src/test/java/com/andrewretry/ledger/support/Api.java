@@ -2,6 +2,7 @@ package com.andrewretry.ledger.support;
 
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -11,8 +12,13 @@ import org.springframework.web.client.RestClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Calls the running app over HTTP. Never throws on 4xx/5xx and never follows redirects, so tests can assert on them. */
+/**
+ * Calls the running app over HTTP. Never throws on 4xx/5xx and never follows redirects, so tests can assert on them.
+ * Money-moving POSTs get a fresh Idempotency-Key unless the test passes one (or uses {@link #postWithoutKey}).
+ */
 public final class Api {
+
+	public static final String IDEMPOTENCY_KEY = "Idempotency-Key";
 
 	private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -49,7 +55,21 @@ public final class Api {
 
 	public Response post(String path, String jsonBody, String... headers) {
 		return client.post().uri(path).contentType(MediaType.APPLICATION_JSON).body(jsonBody)
-				.headers(h -> addAll(h, headers)).exchange(Api::read);
+				.headers(h -> {
+					addAll(h, headers);
+					if (movesMoney(path) && !h.containsHeader(IDEMPOTENCY_KEY)) {
+						h.add(IDEMPOTENCY_KEY, UUID.randomUUID().toString());
+					}
+				})
+				.exchange(Api::read);
+	}
+
+	public Response postWithoutKey(String path, String jsonBody) {
+		return client.post().uri(path).contentType(MediaType.APPLICATION_JSON).body(jsonBody).exchange(Api::read);
+	}
+
+	private static boolean movesMoney(String path) {
+		return path.equals("/deposits") || path.equals("/withdrawals") || path.startsWith("/transactions");
 	}
 
 	private static void addAll(HttpHeaders target, String[] pairs) {

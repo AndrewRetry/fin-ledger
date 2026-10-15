@@ -26,3 +26,22 @@ jobs:
         with:
           name: surefire-reports
           path: backend/target/surefire-reports   # `uses:` steps ignore working-directory
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Type-check and build
+        run: npm run build
+      - name: Unit tests
+        run: npm test

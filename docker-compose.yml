@@ -30,5 +30,13 @@ services:
     ports:
       - "8080:8080"
 
+  # The browser console: http://localhost:3000 (nginx serves it and proxies /api to the app).
+  web:
+    build: ./frontend
+    depends_on:
+      - app
+    ports:
+      - "3000:80"
+
 volumes:
   ledger-db:

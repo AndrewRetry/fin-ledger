@@ -25,11 +25,8 @@ api.use(ledgerHeaders)
 
 type Result<T> = { data?: T; error?: unknown; response: Response }
 
-/**
- * Awaits an openapi-fetch call and returns its data, or throws an ApiProblem. Use it inside TanStack Query
- * functions so every screen gets the same error type.
- */
-export async function unwrap<T>(call: Promise<Result<T>>): Promise<T> {
+/** Awaits an openapi-fetch call and returns its data with the raw response, or throws an ApiProblem. */
+export async function send<T>(call: Promise<Result<T>>): Promise<{ data: T; response: Response }> {
   let result: Result<T>
   try {
     result = await call
@@ -39,7 +36,12 @@ export async function unwrap<T>(call: Promise<Result<T>>): Promise<T> {
   if (result.error !== undefined || !result.response.ok) {
     throw toProblem(result.response.status, result.error)
   }
-  return result.data as T
+  return { data: result.data as T, response: result.response }
+}
+
+/** Like send, data only. Use it inside TanStack Query functions so every screen gets the same error type. */
+export async function unwrap<T>(call: Promise<Result<T>>): Promise<T> {
+  return (await send(call)).data
 }
 
 export { ApiProblem }

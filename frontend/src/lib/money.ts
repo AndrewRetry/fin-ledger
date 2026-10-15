@@ -38,6 +38,18 @@ export function toMinor(text: string, decimals: number): number {
   return Number(minor)
 }
 
+/** toMinor, or null while the text is empty or invalid (or the currency is not known yet). */
+export function minorOrNull(text: string, decimals: number | undefined): number | null {
+  if (decimals === undefined) {
+    return null
+  }
+  try {
+    return toMinor(text, decimals)
+  } catch {
+    return null
+  }
+}
+
 /** 2550 with 2 decimals -> "25.50"; -100000 -> "-1000.00". The same text the backend puts in `display`. */
 export function fromMinor(minor: number | bigint, decimals: number): string {
   const value = BigInt(minor)

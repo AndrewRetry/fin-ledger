@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { api, unwrap } from './client'
+import type { components } from './schema'
 
 /** The newest link of the hash chain. Polled, so the header shows writes from other tabs and scripts too. */
 export function useLedgerHead() {
@@ -42,4 +43,34 @@ export function useCreateAccount() {
     mutationFn: (body: { name: string; currency: string }) => unwrap(api.POST('/accounts', { body })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['accounts'] }),
   })
+}
+
+export type Account = components['schemas']['AccountResponse']
+
+/** Every account, for pickers and name lookups (pages through GET /accounts; the demo has few). */
+export function useAllAccounts() {
+  return useQuery({
+    queryKey: ['accounts', 'all'],
+    queryFn: async () => {
+      const all: Account[] = []
+      for (let page = 0; ; page++) {
+        const result = await unwrap(api.GET('/accounts', { params: { query: { page, size: 200 } } }))
+        all.push(...result.items)
+        if (page + 1 >= result.totalPages) {
+          return all
+        }
+      }
+    },
+  })
+}
+
+/** The account with this id, from the shared all-accounts list. */
+export function useAccountById(id: string | null): Account | undefined {
+  const accounts = useAllAccounts()
+  return id ? accounts.data?.find((account) => account.id === id) : undefined
+}
+
+/** The rate in use for every currency pair. */
+export function useFxRates() {
+  return useQuery({ queryKey: ['fx-rates'], queryFn: () => unwrap(api.GET('/fx/rates')) })
 }

@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router'
 import { AppLayout } from './components/AppLayout'
 import { AccountDetailPage } from './pages/AccountDetailPage'
 import { AccountsPage } from './pages/AccountsPage'
+import { MoveMoneyPage } from './pages/MoveMoneyPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
@@ -14,8 +15,7 @@ export default function App() {
         <Route index element={<OverviewPage />} />
         <Route path="accounts" element={<AccountsPage />} />
         <Route path="accounts/:id" element={<AccountDetailPage />} />
-        <Route path="move" element={
-          <PlaceholderPage title="Move money" phase="F2">Transfers, deposits and withdrawals, including FX.</PlaceholderPage>} />
+        <Route path="move" element={<MoveMoneyPage />} />
         <Route path="transactions/*" element={
           <PlaceholderPage title="Transactions" phase="F2">Look up a transaction, verify its hash, reverse it.</PlaceholderPage>} />
         <Route path="fx" element={

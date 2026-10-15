@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
@@ -13,5 +14,9 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
+  },
+  test: {
+    // Unit tests only; tests/e2e is Playwright's (npm run test:e2e).
+    include: ['tests/unit/**/*.test.ts'],
   },
 })

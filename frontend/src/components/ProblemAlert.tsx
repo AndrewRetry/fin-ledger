@@ -2,6 +2,7 @@ import { ActionIcon, Alert, Badge, Button, CopyButton, Group, Text, Tooltip } fr
 import { IconAlertTriangle, IconCheck, IconCopy, IconPlugConnectedX, IconRefresh } from '@tabler/icons-react'
 
 import { ApiProblem } from '../api/problem'
+import { shortId } from '../lib/ids'
 
 /** Shows any failed request the same way: what went wrong, the stable code, and the request id to quote. */
 export function ProblemAlert({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
@@ -21,10 +22,12 @@ export function ProblemAlert({ error, onRetry }: { error: unknown; onRetry?: () 
           </Badge>
         )}
         {problem?.requestId && (
-          <Group gap={4}>
-            <Text size="xs" c="dimmed" ff="monospace">
-              request {problem.requestId}
-            </Text>
+          <Group gap={4} wrap="nowrap">
+            <Tooltip label={problem.requestId} withArrow>
+              <Text size="xs" c="dimmed" ff="monospace">
+                request {shortId(problem.requestId)}
+              </Text>
+            </Tooltip>
             <CopyButton value={problem.requestId}>
               {({ copied, copy }) => (
                 <Tooltip label={copied ? 'Copied' : 'Copy request id'} withArrow>

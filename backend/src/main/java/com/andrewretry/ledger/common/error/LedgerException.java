@@ -77,6 +77,18 @@ public class LedgerException extends RuntimeException {
 				+ "' is already booked; the same outside movement cannot be booked twice.");
 	}
 
+	public static LedgerException cannotReverseReversal(UUID transactionId) {
+		return new LedgerException(ErrorCode.CANNOT_REVERSE_REVERSAL, "Transaction " + transactionId
+				+ " is itself a reversal and cannot be reversed. Post a new transaction instead.",
+				Map.of("transactionId", transactionId));
+	}
+
+	public static LedgerException alreadyReversed(UUID transactionId) {
+		return new LedgerException(ErrorCode.ALREADY_REVERSED, "Transaction " + transactionId
+				+ " has already been reversed; see reversedById on GET /transactions/" + transactionId + ".",
+				Map.of("transactionId", transactionId));
+	}
+
 	public static LedgerException integrityHold() {
 		return new LedgerException(ErrorCode.LEDGER_INTEGRITY_HOLD,
 				"Writes are paused until an administrator reviews a failed integrity check. Reads still work.");

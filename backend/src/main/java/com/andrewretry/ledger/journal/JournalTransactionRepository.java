@@ -12,6 +12,8 @@ public interface JournalTransactionRepository extends JpaRepository<JournalTrans
 
 	boolean existsByExternalRef(String externalRef);
 
+	boolean existsByReversesId(UUID reversesId);
+
 	@Query("select t.id from JournalTransaction t where t.reversesId = :id")
 	Optional<UUID> findReversalIdOf(UUID id);
 

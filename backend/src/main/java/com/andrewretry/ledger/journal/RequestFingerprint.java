@@ -26,6 +26,10 @@ public final class RequestFingerprint {
 		return of("WITHDRAWAL-V1", account, amount, description, externalRef);
 	}
 
+	public static String reversal(UUID transactionId, String reason) {
+		return of("REVERSAL-V1", transactionId, reason);
+	}
+
 	private static String of(Object... fields) {
 		Canonical c = new Canonical();
 		for (Object field : fields) {

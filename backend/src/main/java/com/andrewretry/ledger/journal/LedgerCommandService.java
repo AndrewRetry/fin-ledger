@@ -58,9 +58,17 @@ public class LedgerCommandService {
 	private record Leg(UUID accountId, Direction direction, long amount) {
 	}
 
-	/** The outcome of step 1: everything needed to post, decided before any lock is taken. */
+	/**
+	 * The outcome of step 1: everything needed to post, decided before any lock is taken.
+	 * {@code reverses} is the original transaction when this is a reversal, else null.
+	 */
 	private record Planned(TransactionType type, String idempotencyKey, String requestHash, String externalRef,
-			String description, List<Leg> legs) {
+			String description, List<Leg> legs, JournalTransaction reverses) {
+
+		Planned(TransactionType type, String idempotencyKey, String requestHash, String externalRef,
+				String description, List<Leg> legs) {
+			this(type, idempotencyKey, requestHash, externalRef, description, legs, null);
+		}
 
 		Set<UUID> accountIds() {
 			return legs.stream().map(Leg::accountId).collect(Collectors.toSet());
@@ -119,6 +127,20 @@ public class LedgerCommandService {
 				List.of(new Leg(sourceId, Direction.DEBIT, amount), new Leg(destinationId, Direction.CREDIT, amount))));
 	}
 
+	@Transactional(isolation = Isolation.READ_COMMITTED, timeout = 10)
+	public CommandResult reverse(String idempotencyKey, UUID transactionId, String reason) {
+		reason = clean(reason);
+		// 1. Load the original with its postings. Postings never change, so reading them before locking is safe.
+		//    The reversal mirrors every posting: same account and amount, DEBIT and CREDIT swapped.
+		JournalTransaction original = journal.findById(transactionId)
+				.orElseThrow(() -> LedgerException.transactionNotFound(transactionId));
+		List<Leg> mirrored = original.getPostings().stream()
+				.map(p -> new Leg(p.accountId(), opposite(p.direction()), p.amount()))
+				.toList();
+		return post(new Planned(TransactionType.REVERSAL, idempotencyKey,
+				RequestFingerprint.reversal(transactionId, reason), null, reason, mirrored, original));
+	}
+
 	/** Steps 2-7, shared by every command. Runs inside the caller's transaction. */
 	private CommandResult post(Planned planned) {
 		// 2. Lock every account the command touches: one query, ascending id. Same order for everyone = no deadlock.
@@ -135,9 +157,13 @@ public class LedgerCommandService {
 			return new CommandResult(TransactionView.of(earlier.get(), currencies), true);
 		}
 
-		// 4. Apply: post-lock checks, then every posting to its locked account (throws if funds are short).
+		// 4. Apply: post-lock checks (external reference unused; a reversal's original not already reversed),
+		//    then every posting to its locked account (throws if funds are short).
 		if (planned.externalRef() != null && journal.existsByExternalRef(planned.externalRef())) {
 			throw LedgerException.externalRefAlreadyUsed(planned.externalRef());
+		}
+		if (planned.reverses() != null) {
+			requireReversible(planned.reverses());
 		}
 		List<AppliedPosting> postings = planned.legs().stream()
 				.map(leg -> locked.get(leg.accountId()).apply(leg.direction(), leg.amount()))
@@ -151,8 +177,8 @@ public class LedgerCommandService {
 
 		// 6. Write: time from the database, taken under the head lock, so chain order and time order agree.
 		TxHasher.Input hashed = new TxHasher.Input(head.getChainLength() + 1, head.getHeadHash(), UUID.randomUUID(),
-				planned.type(), dbClock.now(), planned.idempotencyKey(), planned.externalRef(), null, null,
-				planned.description(), postings);
+				planned.type(), dbClock.now(), planned.idempotencyKey(), planned.externalRef(),
+				planned.reverses() == null ? null : planned.reverses().getId(), null, planned.description(), postings);
 		String txHash = TxHasher.hash(hashed);
 		JournalTransaction tx = new JournalTransaction(hashed, planned.requestHash(), txHash);
 		entityManager.persist(tx);
@@ -175,6 +201,20 @@ public class LedgerCommandService {
 			throw LedgerException.kindNotAllowed(accountId, "CUSTOMER or FX_LIQUIDITY");
 		}
 		return wallet;
+	}
+
+	/** A reversal can never itself be reversed, and a transaction is reversed at most once. */
+	private void requireReversible(JournalTransaction original) {
+		if (original.getType() == TransactionType.REVERSAL) {
+			throw LedgerException.cannotReverseReversal(original.getId());
+		}
+		if (journal.existsByReversesId(original.getId())) {
+			throw LedgerException.alreadyReversed(original.getId());
+		}
+	}
+
+	private static Direction opposite(Direction direction) {
+		return direction == Direction.DEBIT ? Direction.CREDIT : Direction.DEBIT;
 	}
 
 	private static void requireCustomer(AccountCurrencyView account) {

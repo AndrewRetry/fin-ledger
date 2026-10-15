@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.andrewretry.ledger.journal.dto.ReversalRequest;
 import com.andrewretry.ledger.journal.dto.TransactionDetails;
 import com.andrewretry.ledger.journal.dto.TransactionView;
 import com.andrewretry.ledger.journal.dto.TransferRequest;
@@ -32,6 +33,12 @@ public class TransactionController {
 			@Valid @RequestBody TransferRequest request) {
 		return commands.transfer(IdempotencyKeys.parse(key), request.sourceAccountId(), request.destinationAccountId(),
 				request.amount(), request.currency(), request.description()).toCreatedResponse();
+	}
+
+	@PostMapping("/transactions/{id}/reversals")
+	ResponseEntity<TransactionView> reverse(@RequestHeader(name = "Idempotency-Key", required = false) String key,
+			@PathVariable UUID id, @Valid @RequestBody ReversalRequest request) {
+		return commands.reverse(IdempotencyKeys.parse(key), id, request.reason()).toCreatedResponse();
 	}
 
 	@GetMapping("/transactions/{id}")

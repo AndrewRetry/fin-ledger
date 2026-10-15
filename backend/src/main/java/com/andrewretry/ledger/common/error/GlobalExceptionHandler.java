@@ -7,12 +7,15 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.TransientDataAccessException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.transaction.TransactionTimedOutException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -21,6 +24,7 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import com.andrewretry.ledger.common.ConstraintNames;
 import com.andrewretry.ledger.web.RequestIdFilter;
 
 /**
@@ -44,6 +48,38 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 			log.warn("Rejected request: {}", code);
 		}
 		return ResponseEntity.status(code.status()).body(problem);
+	}
+
+	/**
+	 * A unique constraint fired at flush or commit. Three are expected races between requests that share no lock
+	 * (PLAN.md §7.1); any other constraint or trigger firing means the Java code let something wrong through.
+	 */
+	@ExceptionHandler(DataIntegrityViolationException.class)
+	ResponseEntity<Object> handleDataIntegrity(DataIntegrityViolationException e, WebRequest request) {
+		if (ConstraintNames.is(e, "uq_jt_idempotency_key")) {
+			return handleLedger(new LedgerException(ErrorCode.IDEMPOTENCY_KEY_REUSED,
+					"This Idempotency-Key was used at the same moment for a different request. Use a new key."), request);
+		}
+		if (ConstraintNames.is(e, "uq_jt_reverses_id")) {
+			return handleLedger(new LedgerException(ErrorCode.ALREADY_REVERSED,
+					"This transaction has already been reversed."), request);
+		}
+		if (ConstraintNames.is(e, "uq_jt_external_ref")) {
+			return handleLedger(new LedgerException(ErrorCode.EXTERNAL_REF_ALREADY_USED,
+					"This external reference is already booked; the same outside movement cannot be booked twice."),
+					request);
+		}
+		log.error("Database guardrail rejected a write (constraint '{}')", ConstraintNames.of(e), e);
+		return internalError(request);
+	}
+
+	/** Lock timeout, deadlock or a transaction over its time limit: nothing was written, retrying is safe. */
+	@ExceptionHandler({ TransientDataAccessException.class, TransactionTimedOutException.class })
+	ResponseEntity<Object> handleTransient(Exception e, WebRequest request) {
+		log.warn("Rejected request: {} ({})", ErrorCode.TRY_AGAIN, e.getClass().getSimpleName());
+		ProblemDetail problem = problem(ErrorCode.TRY_AGAIN,
+				"The ledger is busy. Retry in a moment with the same Idempotency-Key; it is safe.", request);
+		return ResponseEntity.status(ErrorCode.TRY_AGAIN.status()).header(HttpHeaders.RETRY_AFTER, "1").body(problem);
 	}
 
 	/** Overflow from {@code Math.addExact} and friends is a bug, never a wrap-around. */

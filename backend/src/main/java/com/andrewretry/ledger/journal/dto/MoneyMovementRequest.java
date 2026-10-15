@@ -2,6 +2,8 @@ package com.andrewretry.ledger.journal.dto;
 
 import java.util.UUID;
 
+import com.andrewretry.ledger.common.Text;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -16,4 +18,11 @@ public record MoneyMovementRequest(
 		@Schema(example = "Top-up") @Size(max = 280) String description,
 		@Schema(example = "fb-tx-1001") @Pattern(regexp = "[A-Za-z0-9][A-Za-z0-9._:-]{0,127}", message = "must be 1-128 characters of letters, digits and . _ : -")
 		String externalRef) {
+
+	/** Trimmed before validation, so " fb-tx-1 " is fb-tx-1 and "" means no external reference. */
+	public MoneyMovementRequest {
+		description = Text.clean(description);
+		externalRef = Text.clean(externalRef);
+	}
+
 }

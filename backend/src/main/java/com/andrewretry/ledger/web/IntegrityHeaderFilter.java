@@ -2,6 +2,8 @@ package com.andrewretry.ledger.web;
 
 import java.io.IOException;
 
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -14,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 /** While the integrity hold is on, every response says so, reads included: the numbers are under suspicion. */
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE + 1)   // right after RequestIdFilter, before AdminKeyFilter can answer
 public class IntegrityHeaderFilter extends OncePerRequestFilter {
 
 	public static final String HEADER = "X-Ledger-Integrity";

@@ -2,6 +2,8 @@ package com.andrewretry.ledger.journal.dto;
 
 import java.util.UUID;
 
+import com.andrewretry.ledger.common.Text;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -15,4 +17,11 @@ public record TransferRequest(
 		@Schema(example = "2500") @NotNull @Min(1) @Max(1_000_000_000_000L) Long amount,
 		@Schema(example = "SGD") String currency,
 		@Schema(example = "Lunch split") @Size(max = 280) String description) {
+
+	/** Trimmed before validation, so "  SGD " is SGD and "" means absent. */
+	public TransferRequest {
+		currency = Text.clean(currency);
+		description = Text.clean(description);
+	}
+
 }

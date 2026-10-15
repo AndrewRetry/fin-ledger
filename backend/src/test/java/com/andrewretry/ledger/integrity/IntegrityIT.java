@@ -106,6 +106,7 @@ class IntegrityIT {
 			assertThat(status.json().path("held").asBoolean()).isTrue();
 			assertThat(status.text("reason")).isEqualTo("test hold");
 			assertThat(api.get("/actuator/health").json().path("status").asString()).isEqualTo("DOWN");
+			assertThat(api.get("/admin/integrity-hold").header("X-Ledger-Integrity")).isEqualTo("HOLD"); // even a 401
 		}
 		finally {
 			Response released = api.admin("/admin/integrity-hold/release", "{\"reason\": \"test over\"}");

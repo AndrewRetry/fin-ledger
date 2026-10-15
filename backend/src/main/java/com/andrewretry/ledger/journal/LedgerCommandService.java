@@ -22,6 +22,7 @@ import com.andrewretry.ledger.account.AccountKind;
 import com.andrewretry.ledger.account.AccountRepository;
 import com.andrewretry.ledger.common.Currencies;
 import com.andrewretry.ledger.common.DbClock;
+import com.andrewretry.ledger.common.Text;
 import com.andrewretry.ledger.common.error.LedgerException;
 import com.andrewretry.ledger.fx.FxConversion;
 import com.andrewretry.ledger.fx.FxRate;
@@ -84,8 +85,8 @@ public class LedgerCommandService {
 	@Transactional(isolation = Isolation.READ_COMMITTED, timeout = 10)
 	public CommandResult deposit(String idempotencyKey, UUID accountId, long amount, String description,
 			String externalRef) {
-		description = clean(description);
-		externalRef = clean(externalRef);
+		description = Text.clean(description);
+		externalRef = Text.clean(externalRef);
 		// 1. Resolve and validate (no locks): money comes in from the outside world of the wallet's currency.
 		AccountCurrencyView wallet = walletForMovement(accountId);
 		AccountCurrencyView funding = accounts.findSystemAccount(AccountKind.FUNDING, wallet.currency());
@@ -97,8 +98,8 @@ public class LedgerCommandService {
 	@Transactional(isolation = Isolation.READ_COMMITTED, timeout = 10)
 	public CommandResult withdraw(String idempotencyKey, UUID accountId, long amount, String description,
 			String externalRef) {
-		description = clean(description);
-		externalRef = clean(externalRef);
+		description = Text.clean(description);
+		externalRef = Text.clean(externalRef);
 		// 1. Resolve and validate (no locks): money goes back to the outside world of the wallet's currency.
 		AccountCurrencyView wallet = walletForMovement(accountId);
 		AccountCurrencyView funding = accounts.findSystemAccount(AccountKind.FUNDING, wallet.currency());
@@ -110,8 +111,8 @@ public class LedgerCommandService {
 	@Transactional(isolation = Isolation.READ_COMMITTED, timeout = 10)
 	public CommandResult transfer(String idempotencyKey, UUID sourceId, UUID destinationId, long amount,
 			String currency, String description) {
-		currency = clean(currency);
-		description = clean(description);
+		currency = Text.clean(currency);
+		description = Text.clean(description);
 		// 1. Resolve and validate (no locks), in the order of PLAN.md §7.2.
 		AccountCurrencyView source = find(sourceId);
 		AccountCurrencyView destination = find(destinationId);
@@ -150,7 +151,7 @@ public class LedgerCommandService {
 
 	@Transactional(isolation = Isolation.READ_COMMITTED, timeout = 10)
 	public CommandResult reverse(String idempotencyKey, UUID transactionId, String reason) {
-		reason = clean(reason);
+		reason = Text.clean(reason);
 		// 1. Load the original with its postings. Postings never change, so reading them before locking is safe.
 		//    The reversal mirrors every posting: same account and amount, DEBIT and CREDIT swapped.
 		JournalTransaction original = journal.findById(transactionId)
@@ -244,11 +245,6 @@ public class LedgerCommandService {
 		if (account.kind() != AccountKind.CUSTOMER) {
 			throw LedgerException.kindNotAllowed(account.id(), "CUSTOMER");
 		}
-	}
-
-	/** Trimmed; blank means absent. Applied before fingerprinting and storing. */
-	private static String clean(String value) {
-		return value == null || value.isBlank() ? null : value.trim();
 	}
 
 	/** Logged only once the commit really happened. */

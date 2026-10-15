@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
+import org.springframework.web.util.UrlPathHelper;
 
 import com.andrewretry.ledger.common.error.ErrorCode;
 import com.andrewretry.ledger.common.error.LedgerException;
@@ -38,9 +39,13 @@ public class AdminKeyFilter extends OncePerRequestFilter {
 		this.resolver = resolver;
 	}
 
+	/**
+	 * Uses the decoded path without ;parameters, which is what Spring MVC routes on. The raw URI would let
+	 * /admin;x=1/fx-rates or /%61dmin/fx-rates reach an admin endpoint without passing this check.
+	 */
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		return !request.getRequestURI().startsWith("/admin/");
+		return !UrlPathHelper.defaultInstance.getLookupPathForRequest(request).startsWith("/admin/");
 	}
 
 	@Override

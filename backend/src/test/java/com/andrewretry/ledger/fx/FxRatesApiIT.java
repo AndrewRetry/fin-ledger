@@ -2,10 +2,16 @@ package com.andrewretry.ledger.fx;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Value;
 
 import com.andrewretry.ledger.support.Api;
@@ -22,9 +28,11 @@ import tools.jackson.databind.JsonNode;
 class FxRatesApiIT {
 
 	private final Api api;
+	private final int port;
 
 	FxRatesApiIT(@Value("${local.server.port}") int port) {
 		this.api = new Api(port);
+		this.port = port;
 	}
 
 	@Test
@@ -61,6 +69,20 @@ class FxRatesApiIT {
 		assertThat(missing.header("Content-Type")).startsWith("application/problem+json");
 		assertThat(missing.text("requestId")).isEqualTo(missing.header("X-Request-Id"));
 		assertThat(wrong.status()).isEqualTo(401);
+	}
+
+	/** Spring routes /admin;x=1/... and /%61dmin/... to the admin endpoints, so the key check must see them too. */
+	@ParameterizedTest
+	@ValueSource(strings = { "/admin;x=1/fx-rates", "/%61dmin/fx-rates", "/admin/./fx-rates" })
+	void requiresTheAdminKeyWhateverTheUrlSpelling(String path) throws Exception {
+		HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+				.header("Content-Type", "application/json")
+				.POST(HttpRequest.BodyPublishers.ofString("{\"base\": \"JPY\", \"quote\": \"EUR\", \"rate\": \"1000\"}"))
+				.build();
+
+		HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+
+		assertThat(response.statusCode()).isEqualTo(401);
 	}
 
 	@Test

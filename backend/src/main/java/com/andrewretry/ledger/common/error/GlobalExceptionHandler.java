@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.TransactionTimedOutException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -41,7 +42,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		ErrorCode code = e.code();
 		ProblemDetail problem = problem(code, e.getMessage(), request);
 		e.properties().forEach(problem::setProperty);
-		if (code.status().is5xxServerError()) {
+		if (code == ErrorCode.INVARIANT_VIOLATION) {
 			log.error("{} {}", code, e.getMessage(), e);
 		}
 		else {
@@ -73,8 +74,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		return internalError(request);
 	}
 
-	/** Lock timeout, deadlock or a transaction over its time limit: nothing was written, retrying is safe. */
-	@ExceptionHandler({ TransientDataAccessException.class, TransactionTimedOutException.class })
+	/**
+	 * Lock timeout, deadlock, a transaction over its time limit, or no database connection available:
+	 * nothing was written, so retrying is safe.
+	 */
+	@ExceptionHandler({ TransientDataAccessException.class, TransactionTimedOutException.class,
+			CannotCreateTransactionException.class })
 	ResponseEntity<Object> handleTransient(Exception e, WebRequest request) {
 		log.warn("Rejected request: {} ({})", ErrorCode.TRY_AGAIN, e.getClass().getSimpleName());
 		ProblemDetail problem = problem(ErrorCode.TRY_AGAIN,

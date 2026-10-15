@@ -138,6 +138,7 @@ Full, clickable documentation is at **http://localhost:8080/swagger-ui.html** wh
 | Method | Path | What it does |
 |---|---|---|
 | `POST` | `/accounts` | Open a customer account in one currency |
+| `GET` | `/accounts` | All accounts, oldest first, paged |
 | `GET` | `/accounts/{id}` | Balance and details |
 | `GET` | `/accounts/{id}/transactions` | History, oldest first, with the balance after each entry |
 | `POST` | `/transactions` | Transfer between two accounts (FX when their currencies differ) |
@@ -148,7 +149,9 @@ Full, clickable documentation is at **http://localhost:8080/swagger-ui.html** wh
 | `GET` | `/ledger/head` | Newest link of the hash chain, to record outside the system |
 | `POST` | `/integrity/checks` | Run every integrity check now |
 | `POST` | `/reconciliations/month-end?period=2026-10` | Reconcile one month |
-| `GET`/`POST` | `/admin/integrity-hold` · `/admin/fx-rates` | Hold status and release, new rates (need `X-Admin-Key`) |
+| `GET` | `/admin/integrity-hold` | Is the integrity hold on, and why (needs `X-Admin-Key`) |
+| `POST` | `/admin/integrity-hold/release` | Release the hold, with a reason (needs `X-Admin-Key`) |
+| `POST` | `/admin/fx-rates` | Add an exchange rate; it is used from the next transfer (needs `X-Admin-Key`) |
 
 ## Requirements → tests
 
@@ -159,7 +162,7 @@ Every requirement of the brief is proved by an integration test against a real P
 | `POST /transactions` with source, destination, amount | `TransferApiIT` |
 | Recorded atomically (both sides or neither) | `TransferApiIT`, `SchemaGuardrailsIT` |
 | Returns the transaction id and a confirmation | `TransferApiIT` |
-| `GET /accounts/{id}` returns the current balance | `AccountApiIT` |
+| `GET /accounts/{id}` returns the current balance | `AccountApiIT`, `TransferApiIT` |
 | `GET /accounts/{id}/transactions`, ordered by time | `HistoryApiIT` |
 | Source decreases and destination increases by the same amount | `TransferApiIT` |
 | Insufficient balance is rejected | `TransferApiIT`, `SchemaGuardrailsIT` |

@@ -10,6 +10,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.TransactionTimedOutException;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
@@ -55,6 +56,12 @@ class GlobalExceptionHandlerTest {
 	@Test
 	void mapsATransactionTimeoutTo503() {
 		assertThat(codeOf(handler.handleTransient(new TransactionTimedOutException("too slow"), request)))
+				.isEqualTo("503 TRY_AGAIN");
+	}
+
+	@Test
+	void mapsAnUnreachableDatabaseTo503() {
+		assertThat(codeOf(handler.handleTransient(new CannotCreateTransactionException("no connection"), request)))
 				.isEqualTo("503 TRY_AGAIN");
 	}
 

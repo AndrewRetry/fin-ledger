@@ -1,6 +1,6 @@
 # Design decisions — Internal Ledger
 
- Status: written before implementation; the **Evidence** line of each decision is filled in as the phase that builds it lands (`PLAN.md` §11).
+ Status: written before implementation and kept in step with it. Each decision's **Evidence** line names the tests that prove it, as of v1.0.0.
 
 ---
 
@@ -203,6 +203,7 @@ flowchart LR
 - **Reconciliation:** the money-supply check already computes −FUNDING per currency = everything held in the ledger (client wallets plus the house's FX wallets). Against custody, that figure must equal the vault balance per asset; a daily job would compare them and feed the same integrity hold.
 - **Precision:** tokens with 18 decimals don't fit `bigint` (§7).
 - **In plain words:** the custody platform knows where the coins are; this ledger knows whose they are. Every outside movement carries the platform's id, so it is booked once, and the two systems are reconciled against each other.
+- **Evidence:** designed, not built. The part that exists is proved by `DepositWithdrawalApiIT` (same `externalRef` → 409, credited once) and `IntegrityIT` (`MONEY_SUPPLY`, the figure to compare with vault balances).
 
 ### ADR-16 What I left out, and what I considered
 
@@ -222,6 +223,8 @@ I designed a bigger version first, then cut what a requirement didn't need, so e
 | Custody integration (ADR-15) | Needs platform credentials and testnet funds a reviewer can't run | Production |
 | Hosting | `docker compose up` is enough to review | A shared demo |
 
+- **Evidence:** none needed: these are the parts deliberately not built. Each "why not here" is a design argument, not a tested claim.
+
 ---
 
 ## 5. Failure modes
@@ -237,7 +240,10 @@ I designed a bigger version first, then cut what a requirement didn't need, so e
 | A bug produces unbalanced postings | Commit fails at the balance trigger → 500 `INVARIANT_VIOLATION`, nothing saved |
 | The house runs out of a currency | FX transfers into it get 422 `INSUFFICIENT_LIQUIDITY` |
 | Someone edits the database directly | The next integrity run names the rows; writes stop until an admin releases the hold |
-| Database unavailable | Health DOWN, requests fail fast; no partial state |
+| Database unavailable | Health DOWN; a request waits at most the 20 s connection timeout, then gets 503 `TRY_AGAIN`; no partial state |
+| Two final closes of the same month at the same instant (the scheduled job and a manual call) | The second hits the snapshot table's primary key → 500 `INVARIANT_VIOLATION` and its run is rolled back; no data is wrong, the month stays frozen once, and re-running the close reports CLEAN. Not worth a lock for this release |
+| A retried FX transfer after an admin lowered the rate until the amount converts to 0 | The retry gets 422 `FX_AMOUNT_TOO_SMALL` instead of a replay, because the conversion is checked in step 1 (§7.1). The money moved once, and `GET /transactions/{id}` still shows it |
+| A transfer between two currencies that have no rate | 422 `FX_RATE_UNAVAILABLE`. Unreachable today — every pair of the four currencies is seeded and rates are never deleted — kept as a safety check for when a currency is added |
 
 ---
 

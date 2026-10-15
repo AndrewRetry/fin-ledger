@@ -24,6 +24,7 @@ public enum ErrorCode {
 	ACCOUNT_KIND_NOT_ALLOWED(HttpStatus.UNPROCESSABLE_CONTENT, "Account kind not allowed for this operation"),
 	CURRENCY_MISMATCH(HttpStatus.UNPROCESSABLE_CONTENT, "Currency does not match the account"),
 	CURRENCY_NOT_SUPPORTED(HttpStatus.UNPROCESSABLE_CONTENT, "Currency not supported"),
+	/** A safety check: every pair of the supported currencies has a seeded rate, and rates are never deleted. */
 	FX_RATE_UNAVAILABLE(HttpStatus.UNPROCESSABLE_CONTENT, "No exchange rate for this currency pair"),
 	FX_AMOUNT_TOO_SMALL(HttpStatus.UNPROCESSABLE_CONTENT, "Amount is too small to convert"),
 	IDEMPOTENCY_KEY_REUSED(HttpStatus.UNPROCESSABLE_CONTENT, "Idempotency-Key was used with a different request"),

@@ -125,6 +125,21 @@ class DepositWithdrawalApiIT {
 		assertThat(response.json().path("errors").get(0).path("field").asString()).isEqualTo("externalRef");
 	}
 
+	/** Optional text is trimmed before it is validated: blank means absent. */
+	@Test
+	void treatsABlankExternalReferenceAsAbsentAndTrimsAPaddedOne() {
+		UUID alice = fixtures.customer("Alice", "SGD");
+		String ref = "fb-tx-" + UUID.randomUUID();
+
+		Response blank = movement("/deposits", alice, 100, "");
+		Response padded = movement("/deposits", alice, 100, "  " + ref + " ");
+
+		assertThat(blank.status()).isEqualTo(201);
+		assertThat(blank.json().path("externalRef").isNull()).isTrue();
+		assertThat(padded.status()).isEqualTo(201);
+		assertThat(padded.text("externalRef")).isEqualTo(ref);
+	}
+
 	@Test
 	void replaysTheSameKeyAndBodyWithoutMovingMoneyTwice() {
 		UUID alice = fixtures.customer("Alice", "SGD");

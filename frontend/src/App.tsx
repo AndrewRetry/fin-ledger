@@ -9,9 +9,9 @@ import { IntegrityPage } from './pages/IntegrityPage'
 import { MoveMoneyPage } from './pages/MoveMoneyPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { OverviewPage } from './pages/OverviewPage'
+import { ScenariosPage } from './pages/ScenariosPage'
 import { TransactionDetailPage } from './pages/TransactionDetailPage'
 import { TransactionsPage } from './pages/TransactionsPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
 
 export default function App() {
   return (
@@ -25,8 +25,7 @@ export default function App() {
         <Route path="transactions/:id" element={<TransactionDetailPage />} />
         <Route path="fx" element={<FxRatesPage />} />
         <Route path="integrity" element={<IntegrityPage />} />
-        <Route path="scenarios" element={
-          <PlaceholderPage title="Scenarios" phase="F5">Every requirement of the assignment, runnable with one click.</PlaceholderPage>} />
+        <Route path="scenarios" element={<ScenariosPage />} />
         <Route path="admin" element={<AdminPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

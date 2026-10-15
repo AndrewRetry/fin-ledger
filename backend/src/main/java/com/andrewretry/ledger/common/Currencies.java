@@ -1,5 +1,6 @@
 package com.andrewretry.ledger.common;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -20,6 +21,11 @@ public class Currencies {
 
 	public Currencies(Map<String, Integer> minorUnitsByCode) {
 		this.minorUnitsByCode = Map.copyOf(minorUnitsByCode);
+	}
+
+	/** Every supported currency code, alphabetically. */
+	public List<String> codes() {
+		return minorUnitsByCode.keySet().stream().sorted().toList();
 	}
 
 	public boolean isSupported(String code) {

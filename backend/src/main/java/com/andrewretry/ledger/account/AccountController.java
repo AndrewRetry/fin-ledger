@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.andrewretry.ledger.account.dto.AccountResponse;
 import com.andrewretry.ledger.account.dto.CreateAccountRequest;
+import com.andrewretry.ledger.account.dto.HistoryPage;
 import com.andrewretry.ledger.common.PageResponse;
 
 import jakarta.validation.Valid;
@@ -23,9 +24,11 @@ import jakarta.validation.constraints.Min;
 public class AccountController {
 
 	private final AccountService accounts;
+	private final AccountHistoryQuery history;
 
-	public AccountController(AccountService accounts) {
+	public AccountController(AccountService accounts, AccountHistoryQuery history) {
 		this.accounts = accounts;
+		this.history = history;
 	}
 
 	@PostMapping("/accounts")
@@ -43,6 +46,13 @@ public class AccountController {
 	@GetMapping("/accounts/{id}")
 	AccountResponse get(@PathVariable UUID id) {
 		return accounts.get(id);
+	}
+
+	/** Oldest first. */
+	@GetMapping("/accounts/{id}/transactions")
+	HistoryPage history(@PathVariable UUID id, @RequestParam(defaultValue = "0") @Min(0) int page,
+			@RequestParam(defaultValue = "50") @Min(1) @Max(200) int size) {
+		return history.history(id, page, size);
 	}
 
 }

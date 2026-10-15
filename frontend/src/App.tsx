@@ -6,6 +6,8 @@ import { AccountsPage } from './pages/AccountsPage'
 import { MoveMoneyPage } from './pages/MoveMoneyPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { OverviewPage } from './pages/OverviewPage'
+import { TransactionDetailPage } from './pages/TransactionDetailPage'
+import { TransactionsPage } from './pages/TransactionsPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 
 export default function App() {
@@ -16,8 +18,8 @@ export default function App() {
         <Route path="accounts" element={<AccountsPage />} />
         <Route path="accounts/:id" element={<AccountDetailPage />} />
         <Route path="move" element={<MoveMoneyPage />} />
-        <Route path="transactions/*" element={
-          <PlaceholderPage title="Transactions" phase="F2">Look up a transaction, verify its hash, reverse it.</PlaceholderPage>} />
+        <Route path="transactions" element={<TransactionsPage />} />
+        <Route path="transactions/:id" element={<TransactionDetailPage />} />
         <Route path="fx" element={
           <PlaceholderPage title="FX rates" phase="F3">The rate in use for every currency pair, and adding one.</PlaceholderPage>} />
         <Route path="integrity" element={

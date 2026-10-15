@@ -74,3 +74,11 @@ export function useAccountById(id: string | null): Account | undefined {
 export function useFxRates() {
   return useQuery({ queryKey: ['fx-rates'], queryFn: () => unwrap(api.GET('/fx/rates')) })
 }
+
+/** One stored transaction, including reversedById (which POST answers leave out). */
+export function useTransaction(id: string) {
+  return useQuery({
+    queryKey: ['transaction', id],
+    queryFn: () => unwrap(api.GET('/transactions/{id}', { params: { path: { id } } })),
+  })
+}

@@ -11,6 +11,7 @@ import com.andrewretry.ledger.support.Api;
 import com.andrewretry.ledger.support.Api.Response;
 import com.andrewretry.ledger.support.Fixtures;
 import com.andrewretry.ledger.support.IntegrationTest;
+import com.andrewretry.ledger.support.TxHashes;
 
 import tools.jackson.databind.JsonNode;
 
@@ -42,7 +43,7 @@ class ReversalApiIT {
 		assertThat(direction(tx, bob)).isEqualTo("DEBIT");
 		assertThat(fixtures.balance(alice)).isEqualTo(10_000);
 		assertThat(fixtures.balance(bob)).isZero();
-		assertThat(TxHasher.hash(TransferApiIT.hashInputOf(tx))).isEqualTo(tx.path("txHash").asString());
+		assertThat(TxHasher.hash(TxHashes.inputOf(tx))).isEqualTo(tx.path("txHash").asString());
 	}
 
 	@Test
@@ -109,6 +110,28 @@ class ReversalApiIT {
 		assertThat(retry.status()).isEqualTo(201);
 		assertThat(retry.header("Idempotent-Replayed")).isEqualTo("true");
 		assertThat(retry.body()).isEqualTo(first.body());
+	}
+
+	/** An FX transfer is reversed at its original rate: both currencies come back exactly, house wallets too. */
+	@Test
+	void reversesAnFxTransferExactlyInBothCurrencies() {
+		UUID alice = fixtures.funded("Alice", "SGD", 10_000);
+		UUID carol = fixtures.customer("Carol", "USD");
+		UUID houseSgd = fixtures.systemAccount("FX_LIQUIDITY", "SGD");
+		UUID houseUsd = fixtures.systemAccount("FX_LIQUIDITY", "USD");
+		long houseSgdBefore = fixtures.balance(houseSgd);
+		long houseUsdBefore = fixtures.balance(houseUsd);
+		String original = transfer(alice, carol, 10_000).text("id");
+
+		Response reversal = reverse(original, "wrong recipient");
+
+		assertThat(reversal.status()).isEqualTo(201);
+		assertThat(reversal.json().path("postings")).hasSize(4);
+		assertThat(reversal.json().path("fx").isNull()).isTrue();
+		assertThat(fixtures.balance(alice)).isEqualTo(10_000);
+		assertThat(fixtures.balance(carol)).isZero();
+		assertThat(fixtures.balance(houseSgd)).isEqualTo(houseSgdBefore);
+		assertThat(fixtures.balance(houseUsd)).isEqualTo(houseUsdBefore);
 	}
 
 	@Test

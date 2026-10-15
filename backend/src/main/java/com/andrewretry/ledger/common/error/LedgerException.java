@@ -89,6 +89,11 @@ public class LedgerException extends RuntimeException {
 				Map.of("transactionId", transactionId));
 	}
 
+	public static LedgerException fxAmountTooSmall(long amount, String from, String to) {
+		return new LedgerException(ErrorCode.FX_AMOUNT_TOO_SMALL, amount + " minor units of " + from
+				+ " convert to less than one minor unit of " + to + ". Send a larger amount.");
+	}
+
 	public static LedgerException integrityHold() {
 		return new LedgerException(ErrorCode.LEDGER_INTEGRITY_HOLD,
 				"Writes are paused until an administrator reviews a failed integrity check. Reads still work.");

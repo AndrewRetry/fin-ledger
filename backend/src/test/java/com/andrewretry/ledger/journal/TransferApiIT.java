@@ -2,9 +2,6 @@ package com.andrewretry.ledger.journal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -14,6 +11,7 @@ import com.andrewretry.ledger.support.Api;
 import com.andrewretry.ledger.support.Api.Response;
 import com.andrewretry.ledger.support.Fixtures;
 import com.andrewretry.ledger.support.IntegrationTest;
+import com.andrewretry.ledger.support.TxHashes;
 
 import tools.jackson.databind.JsonNode;
 
@@ -77,8 +75,8 @@ class TransferApiIT {
 
 		assertThat(second.path("chainIndex").asLong()).isEqualTo(first.path("chainIndex").asLong() + 1);
 		assertThat(second.path("prevHash").asString()).isEqualTo(first.path("txHash").asString());
-		assertThat(TxHasher.hash(hashInputOf(first))).isEqualTo(first.path("txHash").asString());
-		assertThat(TxHasher.hash(hashInputOf(second))).isEqualTo(second.path("txHash").asString());
+		assertThat(TxHasher.hash(TxHashes.inputOf(first))).isEqualTo(first.path("txHash").asString());
+		assertThat(TxHasher.hash(TxHashes.inputOf(second))).isEqualTo(second.path("txHash").asString());
 		assertThat(api.get("/ledger/head").json().path("headHash").asString()).isEqualTo(second.path("txHash").asString());
 	}
 
@@ -162,14 +160,6 @@ class TransferApiIT {
 	}
 
 	@Test
-	void refusesCrossCurrencyTransfersUntilFxExists() {
-		UUID alice = fixtures.funded("Alice", "SGD", 1_000);
-		UUID carol = fixtures.customer("Carol", "USD");
-
-		assertThat(code(transfer(alice, carol, 100, null))).isEqualTo("422 FX_RATE_UNAVAILABLE");
-	}
-
-	@Test
 	void rejectsAFractionalAmount() {
 		assertThat(code(rawTransfer("10.5"))).isEqualTo("400 VALIDATION_FAILED");
 	}
@@ -246,29 +236,6 @@ class TransferApiIT {
 			}
 		}
 		throw new AssertionError("no posting for " + accountId);
-	}
-
-	static TxHasher.Input hashInputOf(JsonNode tx) {
-		List<AppliedPosting> postings = new ArrayList<>();
-		for (JsonNode p : tx.path("postings")) {
-			postings.add(new AppliedPosting(UUID.fromString(p.path("accountId").asString()),
-					p.path("amount").path("currency").asString(), Direction.valueOf(p.path("direction").asString()),
-					p.path("amount").path("amount").asLong(), p.path("accountVersion").asLong(),
-					p.path("balanceAfter").path("amount").asLong()));
-		}
-		return new TxHasher.Input(tx.path("chainIndex").asLong(), tx.path("prevHash").asString(),
-				UUID.fromString(tx.path("id").asString()), TransactionType.valueOf(tx.path("type").asString()),
-				Instant.parse(tx.path("createdAt").asString()), tx.path("idempotencyKey").asString(),
-				textOrNull(tx, "externalRef"), uuidOrNull(tx, "reversesId"), null, textOrNull(tx, "description"),
-				postings);
-	}
-
-	private static String textOrNull(JsonNode tx, String field) {
-		return tx.path(field).isNull() ? null : tx.path(field).asString();
-	}
-
-	private static UUID uuidOrNull(JsonNode tx, String field) {
-		return tx.path(field).isNull() ? null : UUID.fromString(tx.path(field).asString());
 	}
 
 }

@@ -22,8 +22,10 @@ import com.andrewretry.ledger.account.AccountKind;
 import com.andrewretry.ledger.account.AccountRepository;
 import com.andrewretry.ledger.common.Currencies;
 import com.andrewretry.ledger.common.DbClock;
-import com.andrewretry.ledger.common.error.ErrorCode;
 import com.andrewretry.ledger.common.error.LedgerException;
+import com.andrewretry.ledger.fx.FxConversion;
+import com.andrewretry.ledger.fx.FxRate;
+import com.andrewretry.ledger.fx.FxRateService;
 import com.andrewretry.ledger.journal.dto.TransactionView;
 
 import jakarta.persistence.EntityManager;
@@ -43,15 +45,18 @@ public class LedgerCommandService {
 	private final DbClock dbClock;
 	private final Currencies currencies;
 	private final EntityManager entityManager;
+	private final FxRateService fxRates;
 
 	public LedgerCommandService(AccountRepository accounts, JournalTransactionRepository journal,
-			LedgerStateRepository ledgerState, DbClock dbClock, Currencies currencies, EntityManager entityManager) {
+			LedgerStateRepository ledgerState, DbClock dbClock, Currencies currencies, EntityManager entityManager,
+			FxRateService fxRates) {
 		this.accounts = accounts;
 		this.journal = journal;
 		this.ledgerState = ledgerState;
 		this.dbClock = dbClock;
 		this.currencies = currencies;
 		this.entityManager = entityManager;
+		this.fxRates = fxRates;
 	}
 
 	/** One posting to be applied: which account, which way, how much. */
@@ -60,14 +65,15 @@ public class LedgerCommandService {
 
 	/**
 	 * The outcome of step 1: everything needed to post, decided before any lock is taken.
-	 * {@code reverses} is the original transaction when this is a reversal, else null.
+	 * {@code reverses} is the original transaction when this is a reversal, {@code fxRate} the rate used when this
+	 * is an FX transfer; both are null otherwise.
 	 */
 	private record Planned(TransactionType type, String idempotencyKey, String requestHash, String externalRef,
-			String description, List<Leg> legs, JournalTransaction reverses) {
+			String description, List<Leg> legs, JournalTransaction reverses, FxRate fxRate) {
 
 		Planned(TransactionType type, String idempotencyKey, String requestHash, String externalRef,
 				String description, List<Leg> legs) {
-			this(type, idempotencyKey, requestHash, externalRef, description, legs, null);
+			this(type, idempotencyKey, requestHash, externalRef, description, legs, null, null);
 		}
 
 		Set<UUID> accountIds() {
@@ -117,14 +123,29 @@ public class LedgerCommandService {
 		if (currency != null && !currency.equals(source.currency())) {
 			throw LedgerException.currencyMismatch(currency, source.currency());
 		}
-		if (!source.currency().equals(destination.currency())) {
-			// Cross-currency transfers need the FX path (PLAN.md §7.3, phase P4); refused until it exists.
-			throw new LedgerException(ErrorCode.FX_RATE_UNAVAILABLE, "Transfers between " + source.currency()
-					+ " and " + destination.currency() + " accounts are not enabled.");
+		String fingerprint = RequestFingerprint.transfer(sourceId, destinationId, amount, currency, description);
+		if (source.currency().equals(destination.currency())) {
+			return post(new Planned(TransactionType.TRANSFER, idempotencyKey, fingerprint, null, description,
+					List.of(new Leg(sourceId, Direction.DEBIT, amount), new Leg(destinationId, Direction.CREDIT, amount))));
 		}
-		return post(new Planned(TransactionType.TRANSFER, idempotencyKey,
-				RequestFingerprint.transfer(sourceId, destinationId, amount, currency, description), null, description,
-				List.of(new Leg(sourceId, Direction.DEBIT, amount), new Leg(destinationId, Direction.CREDIT, amount))));
+
+		// FX transfer (PLAN.md §7.3): two trades with the house. The sender pays the house's wallet in the source
+		// currency; the house's wallet in the destination currency pays the recipient. Each currency balances alone.
+		String from = source.currency();
+		String to = destination.currency();
+		FxRate rate = fxRates.latest(from, to);
+		long converted = FxConversion.convert(amount, rate.getRate(), currencies.minorUnits(from), currencies.minorUnits(to));
+		if (converted == 0) {
+			throw LedgerException.fxAmountTooSmall(amount, from, to);
+		}
+		UUID houseFrom = accounts.findSystemAccount(AccountKind.FX_LIQUIDITY, from).id();
+		UUID houseTo = accounts.findSystemAccount(AccountKind.FX_LIQUIDITY, to).id();
+		return post(new Planned(TransactionType.FX_TRANSFER, idempotencyKey, fingerprint, null, description,
+				List.of(new Leg(sourceId, Direction.DEBIT, amount),
+						new Leg(houseFrom, Direction.CREDIT, amount),
+						new Leg(houseTo, Direction.DEBIT, converted),
+						new Leg(destinationId, Direction.CREDIT, converted)),
+				null, rate));
 	}
 
 	@Transactional(isolation = Isolation.READ_COMMITTED, timeout = 10)
@@ -138,7 +159,7 @@ public class LedgerCommandService {
 				.map(p -> new Leg(p.accountId(), opposite(p.direction()), p.amount()))
 				.toList();
 		return post(new Planned(TransactionType.REVERSAL, idempotencyKey,
-				RequestFingerprint.reversal(transactionId, reason), null, reason, mirrored, original));
+				RequestFingerprint.reversal(transactionId, reason), null, reason, mirrored, original, null));
 	}
 
 	/** Steps 2-7, shared by every command. Runs inside the caller's transaction. */
@@ -154,7 +175,8 @@ public class LedgerCommandService {
 			if (!earlier.get().getRequestHash().equals(planned.requestHash())) {
 				throw LedgerException.idempotencyKeyReused(planned.idempotencyKey());
 			}
-			return new CommandResult(TransactionView.of(earlier.get(), currencies), true);
+			JournalTransaction replayed = earlier.get();
+			return new CommandResult(TransactionView.of(replayed, fxRates.usedBy(replayed), currencies), true);
 		}
 
 		// 4. Apply: post-lock checks (external reference unused; a reversal's original not already reversed),
@@ -178,7 +200,8 @@ public class LedgerCommandService {
 		// 6. Write: time from the database, taken under the head lock, so chain order and time order agree.
 		TxHasher.Input hashed = new TxHasher.Input(head.getChainLength() + 1, head.getHeadHash(), UUID.randomUUID(),
 				planned.type(), dbClock.now(), planned.idempotencyKey(), planned.externalRef(),
-				planned.reverses() == null ? null : planned.reverses().getId(), null, planned.description(), postings);
+				planned.reverses() == null ? null : planned.reverses().getId(),
+				planned.fxRate() == null ? null : planned.fxRate().getId(), planned.description(), postings);
 		String txHash = TxHasher.hash(hashed);
 		JournalTransaction tx = new JournalTransaction(hashed, planned.requestHash(), txHash);
 		entityManager.persist(tx);
@@ -187,7 +210,7 @@ public class LedgerCommandService {
 
 		// 7. Commit happens when the method returns; deferred triggers re-check balance, chain and postings then.
 		logAfterCommit(tx);
-		return new CommandResult(TransactionView.of(tx, currencies), false);
+		return new CommandResult(TransactionView.of(tx, planned.fxRate(), currencies), false);
 	}
 
 	private AccountCurrencyView find(UUID accountId) {

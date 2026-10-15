@@ -11,6 +11,7 @@ import com.andrewretry.ledger.common.DbClock;
 import com.andrewretry.ledger.common.error.ErrorCode;
 import com.andrewretry.ledger.common.error.LedgerException;
 import com.andrewretry.ledger.fx.dto.FxRateResponse;
+import com.andrewretry.ledger.journal.JournalTransaction;
 
 @Service
 public class FxRateService {
@@ -31,6 +32,12 @@ public class FxRateService {
 		return rates.findFirstByBaseAndQuoteOrderByCreatedAtDescIdAsc(base, quote)
 				.orElseThrow(() -> new LedgerException(ErrorCode.FX_RATE_UNAVAILABLE,
 						"There is no exchange rate from " + base + " to " + quote + "."));
+	}
+
+	/** The exact rate an FX transfer used, or null for every other transaction. Joins the caller's transaction. */
+	@Transactional(readOnly = true)
+	public FxRate usedBy(JournalTransaction tx) {
+		return tx.getFxRateId() == null ? null : rates.findById(tx.getFxRateId()).orElseThrow();
 	}
 
 	@Transactional(readOnly = true)

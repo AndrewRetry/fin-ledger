@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.andrewretry.ledger.common.Currencies;
 import com.andrewretry.ledger.common.error.LedgerException;
+import com.andrewretry.ledger.fx.FxRateService;
 import com.andrewretry.ledger.journal.dto.LedgerHead;
 import com.andrewretry.ledger.journal.dto.TransactionDetails;
 import com.andrewretry.ledger.journal.dto.TransactionView;
@@ -18,18 +19,21 @@ public class TransactionQuery {
 	private final JournalTransactionRepository journal;
 	private final LedgerStateRepository ledgerState;
 	private final Currencies currencies;
+	private final FxRateService fxRates;
 
 	public TransactionQuery(JournalTransactionRepository journal, LedgerStateRepository ledgerState,
-			Currencies currencies) {
+			Currencies currencies, FxRateService fxRates) {
 		this.journal = journal;
 		this.ledgerState = ledgerState;
 		this.currencies = currencies;
+		this.fxRates = fxRates;
 	}
 
 	@Transactional(readOnly = true)
 	public TransactionDetails get(UUID id) {
 		JournalTransaction tx = journal.findById(id).orElseThrow(() -> LedgerException.transactionNotFound(id));
-		return new TransactionDetails(TransactionView.of(tx, currencies), journal.findReversalIdOf(id).orElse(null));
+		return new TransactionDetails(TransactionView.of(tx, fxRates.usedBy(tx), currencies),
+				journal.findReversalIdOf(id).orElse(null));
 	}
 
 	@Transactional(readOnly = true)

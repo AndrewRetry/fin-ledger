@@ -11,6 +11,7 @@ import com.andrewretry.ledger.support.Api;
 import com.andrewretry.ledger.support.Api.Response;
 import com.andrewretry.ledger.support.Fixtures;
 import com.andrewretry.ledger.support.IntegrationTest;
+import com.andrewretry.ledger.support.TxHashes;
 
 import tools.jackson.databind.JsonNode;
 
@@ -176,7 +177,7 @@ class DepositWithdrawalApiIT {
 
 		JsonNode tx = movement("/deposits", alice, 100, "fb-tx-" + UUID.randomUUID()).json();
 
-		assertThat(TxHasher.hash(TransferApiIT.hashInputOf(tx))).isEqualTo(tx.path("txHash").asString());
+		assertThat(TxHasher.hash(TxHashes.inputOf(tx))).isEqualTo(tx.path("txHash").asString());
 	}
 
 	private Response movement(String path, UUID accountId, long amount, String externalRef) {

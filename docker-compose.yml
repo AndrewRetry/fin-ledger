@@ -17,7 +17,7 @@ services:
       retries: 20
 
   app:
-    build: .
+    build: ./backend
     depends_on:
       db:
         condition: service_healthy

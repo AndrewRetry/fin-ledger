@@ -1,6 +1,8 @@
 import { Route, Routes } from 'react-router'
 
 import { AppLayout } from './components/AppLayout'
+import { AdminPage } from './pages/AdminPage'
+import { FxRatesPage } from './pages/FxRatesPage'
 import { AccountDetailPage } from './pages/AccountDetailPage'
 import { AccountsPage } from './pages/AccountsPage'
 import { MoveMoneyPage } from './pages/MoveMoneyPage'
@@ -20,14 +22,12 @@ export default function App() {
         <Route path="move" element={<MoveMoneyPage />} />
         <Route path="transactions" element={<TransactionsPage />} />
         <Route path="transactions/:id" element={<TransactionDetailPage />} />
-        <Route path="fx" element={
-          <PlaceholderPage title="FX rates" phase="F3">The rate in use for every currency pair, and adding one.</PlaceholderPage>} />
+        <Route path="fx" element={<FxRatesPage />} />
         <Route path="integrity" element={
           <PlaceholderPage title="Integrity" phase="F4">Integrity checks, stored runs and month-end reconciliation.</PlaceholderPage>} />
         <Route path="scenarios" element={
           <PlaceholderPage title="Scenarios" phase="F5">Every requirement of the assignment, runnable with one click.</PlaceholderPage>} />
-        <Route path="admin" element={
-          <PlaceholderPage title="Admin" phase="F3">The admin key, the integrity hold and its release.</PlaceholderPage>} />
+        <Route path="admin" element={<AdminPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

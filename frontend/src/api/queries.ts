@@ -82,3 +82,29 @@ export function useTransaction(id: string) {
     queryFn: () => unwrap(api.GET('/transactions/{id}', { params: { path: { id } } })),
   })
 }
+
+/** Hold status from the admin endpoint (needs the admin key; the header alone says only held or not). */
+export function useHoldStatus(enabled: boolean) {
+  return useQuery({
+    queryKey: ['hold-status'],
+    queryFn: () => unwrap(api.GET('/admin/integrity-hold')),
+    enabled,
+    retry: false,
+  })
+}
+
+/** Admin writes. Either can change what every screen shows, so everything is refetched afterwards. */
+export function useAdminActions() {
+  const queryClient = useQueryClient()
+  const refreshAll = () => queryClient.invalidateQueries()
+  return {
+    addRate: useMutation({
+      mutationFn: (body: { base: string; quote: string; rate: string }) => unwrap(api.POST('/admin/fx-rates', { body })),
+      onSuccess: refreshAll,
+    }),
+    releaseHold: useMutation({
+      mutationFn: (reason: string) => unwrap(api.POST('/admin/integrity-hold/release', { body: { reason } })),
+      onSuccess: refreshAll,
+    }),
+  }
+}

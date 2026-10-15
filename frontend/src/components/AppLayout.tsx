@@ -31,6 +31,7 @@ import {
 import { Link, Outlet, useLocation } from 'react-router'
 
 import { useLedgerHead } from '../api/queries'
+import { HoldBanner } from './HoldBanner'
 import { shortId } from '../lib/ids'
 import { useLedgerStatus } from '../lib/ledgerStatus'
 
@@ -91,6 +92,7 @@ export function AppLayout() {
       </AppShell.Navbar>
 
       <AppShell.Main>
+        <HoldBanner />
         <Outlet />
       </AppShell.Main>
     </AppShell>
